@@ -59,3 +59,6 @@ pnpm-debug.log*
 # ─── Supabase (local) ────────────────────────────────────────────────────────
 supabase/.temp/
 supabase/.branches/
+
+# Other
+*.pdf

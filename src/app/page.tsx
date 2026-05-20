@@ -1,8 +1,16 @@
-export default function Home() {
+import { auth } from '@clerk/nextjs/server';
+import { Hero } from '@/components/landing/Hero';
+import { FeatureExplainer } from '@/components/landing/FeatureExplainer';
+import { CityDirectory } from '@/components/landing/CityDirectory';
+
+export default async function Home() {
+  const { userId } = await auth();
+
   return (
     <main>
-      <h1>OEF City Climate Action Tracker</h1>
-      <p>Welcome to the Climate Action Tracker.</p>
+      <Hero signedIn={!!userId} />
+      <FeatureExplainer />
+      <CityDirectory />
     </main>
   );
 }

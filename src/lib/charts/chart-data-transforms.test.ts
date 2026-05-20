@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { toProjectionTraces, toSectorPieTrace, toReductionBarTraces } from './chart-data-transforms';
-import { defaultChartTheme } from './chart-config';
+import { defaultChartTheme, getChartTheme } from './chart-config';
 import type { ProjectionDataPoint } from '@/types/charts';
 import type { ClimateAction, Sector } from '@/types';
 
@@ -52,6 +52,20 @@ describe('toProjectionTraces', () => {
       expect(trace.y).toEqual([]);
     });
   });
+
+  it('uses light mode colors by default', () => {
+    const traces = toProjectionTraces(projections);
+    const lightTheme = getChartTheme('light');
+    expect(traces[0].line?.color).toBe(lightTheme.sectorColors.transport);
+    expect(traces[2].line?.color).toBe(lightTheme.onTrackColor);
+  });
+
+  it('uses dark mode colors when mode is dark', () => {
+    const traces = toProjectionTraces(projections, 'dark');
+    const darkTheme = getChartTheme('dark');
+    expect(traces[0].line?.color).toBe(darkTheme.sectorColors.transport);
+    expect(traces[2].line?.color).toBe(darkTheme.onTrackColor);
+  });
 });
 
 describe('toSectorPieTrace', () => {
@@ -83,7 +97,7 @@ describe('toSectorPieTrace', () => {
     expect(trace.type).toBe('pie');
   });
 
-  it('applies sector colors from theme', () => {
+  it('applies sector colors from legacy theme', () => {
     const sectorData: Record<Sector, number> = {
       transport: 100,
       energy: 200,
@@ -94,6 +108,20 @@ describe('toSectorPieTrace', () => {
     const trace = toSectorPieTrace(sectorData, defaultChartTheme);
     expect(trace.marker?.colors).toContain(defaultChartTheme.colorPalette.transport);
     expect(trace.marker?.colors).toContain(defaultChartTheme.colorPalette.energy);
+  });
+
+  it('applies sector colors from new ChartTheme', () => {
+    const sectorData: Record<Sector, number> = {
+      transport: 100,
+      energy: 200,
+      buildings: 0,
+      waste: 0,
+      land_use: 0,
+    };
+    const darkTheme = getChartTheme('dark');
+    const trace = toSectorPieTrace(sectorData, darkTheme);
+    expect(trace.marker?.colors).toContain(darkTheme.sectorColors.transport);
+    expect(trace.marker?.colors).toContain(darkTheme.sectorColors.energy);
   });
 
   it('replaces underscores with spaces in labels', () => {
@@ -160,10 +188,17 @@ describe('toReductionBarTraces', () => {
     expect(traces[0].y).toEqual([125]);
   });
 
-  it('applies sector colors from theme', () => {
+  it('applies sector colors from legacy theme', () => {
     const actions = [makeAction({ sector: 'energy' })];
     const traces = toReductionBarTraces(actions, defaultChartTheme);
     expect(traces[0].marker?.color).toBe(defaultChartTheme.colorPalette.energy);
+  });
+
+  it('applies sector colors from new ChartTheme', () => {
+    const actions = [makeAction({ sector: 'energy' })];
+    const darkTheme = getChartTheme('dark');
+    const traces = toReductionBarTraces(actions, darkTheme);
+    expect(traces[0].marker?.color).toBe(darkTheme.sectorColors.energy);
   });
 
   it('sorts years in ascending order', () => {

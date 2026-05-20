@@ -1,13 +1,17 @@
 import type { ProjectionDataPoint } from '@/types/charts';
 import type { ClimateAction, Sector } from '@/types';
-import { defaultChartTheme, type ChartTheme } from './chart-config';
+import { getChartTheme, type ChartTheme, type LegacyChartTheme, defaultChartTheme } from './chart-config';
 
 /**
  * Transforms ProjectionDataPoint[] into Plotly trace data for the emissions projection chart.
  * Returns three traces: projected, baseline, and linear target.
  */
-export function toProjectionTraces(projections: ProjectionDataPoint[]): Plotly.Data[] {
+export function toProjectionTraces(
+  projections: ProjectionDataPoint[],
+  mode: 'light' | 'dark' = 'light'
+): Plotly.Data[] {
   const years = projections.map(p => p.year);
+  const theme = getChartTheme(mode);
 
   return [
     {
@@ -16,7 +20,7 @@ export function toProjectionTraces(projections: ProjectionDataPoint[]): Plotly.D
       type: 'scatter',
       mode: 'lines',
       name: 'Projected Emissions',
-      line: { color: '#3B82F6', width: 3 },
+      line: { color: theme.sectorColors.transport, width: 3 },
     },
     {
       x: years,
@@ -24,7 +28,7 @@ export function toProjectionTraces(projections: ProjectionDataPoint[]): Plotly.D
       type: 'scatter',
       mode: 'lines',
       name: 'Baseline',
-      line: { color: '#9CA3AF', width: 2, dash: 'dash' },
+      line: { color: theme.indeterminateColor, width: 2, dash: 'dash' },
     },
     {
       x: years,
@@ -32,7 +36,7 @@ export function toProjectionTraces(projections: ProjectionDataPoint[]): Plotly.D
       type: 'scatter',
       mode: 'lines',
       name: 'Linear Target',
-      line: { color: '#10B981', width: 2, dash: 'dot' },
+      line: { color: theme.onTrackColor, width: 2, dash: 'dot' },
     },
   ];
 }
@@ -43,9 +47,19 @@ export function toProjectionTraces(projections: ProjectionDataPoint[]): Plotly.D
  */
 export function toSectorPieTrace(
   sectorData: Record<Sector, number>,
-  theme: ChartTheme = defaultChartTheme
+  themeOrLegacy?: ChartTheme | LegacyChartTheme
 ): Plotly.Data {
   const entries = Object.entries(sectorData).filter(([_, value]) => value > 0);
+
+  // Resolve sector colors from either new ChartTheme or legacy
+  let sectorColors: Record<Sector, string>;
+  if (themeOrLegacy && 'sectorColors' in themeOrLegacy) {
+    sectorColors = themeOrLegacy.sectorColors;
+  } else if (themeOrLegacy && 'colorPalette' in themeOrLegacy) {
+    sectorColors = themeOrLegacy.colorPalette;
+  } else {
+    sectorColors = defaultChartTheme.colorPalette;
+  }
 
   return {
     labels: entries.map(([sector]) => sector.replace('_', ' ')),
@@ -53,7 +67,7 @@ export function toSectorPieTrace(
     type: 'pie',
     hole: 0.4,
     marker: {
-      colors: entries.map(([sector]) => theme.colorPalette[sector as Sector]),
+      colors: entries.map(([sector]) => sectorColors[sector as Sector]),
     },
     textinfo: 'label+percent',
     hoverinfo: 'label+value+percent',
@@ -66,9 +80,19 @@ export function toSectorPieTrace(
  */
 export function toReductionBarTraces(
   actions: ClimateAction[],
-  theme: ChartTheme = defaultChartTheme
+  themeOrLegacy?: ChartTheme | LegacyChartTheme
 ): Plotly.Data[] {
   const sectors = [...new Set(actions.map(a => a.sector))];
+
+  // Resolve sector colors from either new ChartTheme or legacy
+  let sectorColors: Record<Sector, string>;
+  if (themeOrLegacy && 'sectorColors' in themeOrLegacy) {
+    sectorColors = themeOrLegacy.sectorColors;
+  } else if (themeOrLegacy && 'colorPalette' in themeOrLegacy) {
+    sectorColors = themeOrLegacy.colorPalette;
+  } else {
+    sectorColors = defaultChartTheme.colorPalette;
+  }
 
   return sectors.map(sector => {
     const sectorActions = actions.filter(a => a.sector === sector);
@@ -83,7 +107,7 @@ export function toReductionBarTraces(
       ),
       type: 'bar',
       name: sector.replace('_', ' '),
-      marker: { color: theme.colorPalette[sector] },
+      marker: { color: sectorColors[sector] },
     };
   });
 }

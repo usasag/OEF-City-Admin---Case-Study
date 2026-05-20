@@ -1,0 +1,360 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Climate-Themed Design System — Forest / Sky / Sand
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Color Palette Tokens (Light Mode) ─────────────────────────────────────── */
+
+@theme {
+  /* Forest greens — primary brand */
+  --color-forest-50:  #f0fdf4;
+  --color-forest-500: #22c55e;
+  --color-forest-600: #16a34a;
+  --color-forest-700: #15803d;
+
+  /* Sky blues — accent */
+  --color-sky-50:  #f0f9ff;
+  --color-sky-400: #38bdf8;
+  --color-sky-600: #0284c7;
+
+  /* Sand — warm neutral */
+  --color-sand-50:  #fdf6e3;
+  --color-sand-200: #f3e8c7;
+  --color-sand-700: #a87b3c;
+
+  /* Semantic status */
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger:  #dc2626;
+
+  /* Surfaces */
+  --color-surface:      #ffffff;
+  --color-surface-card: #ffffff;
+  --color-surface-alt:  #f0fdf4;
+
+  /* Ink (text) */
+  --color-ink:       #0f1f17;
+  --color-ink-muted: #475c54;
+  --color-ink-faint: #6b8578;
+
+  /* Borders */
+  --color-border:        #dbeadb;
+  --color-border-strong: #b8d4b8;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─── Base Layer ────────────────────────────────────────────────────────────── */
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface text-ink transition-colors duration-200;
+  }
+
+  /* Dark mode overrides */
+  html.dark {
+    --color-forest-50:  #0f1f17;
+    --color-forest-500: #34d399;
+    --color-forest-600: #22c55e;
+    --color-forest-700: #16a34a;
+
+    --color-sky-50:  #0c1c2a;
+    --color-sky-400: #7dd3fc;
+    --color-sky-600: #38bdf8;
+
+    --color-sand-50:  #1f1a0f;
+    --color-sand-200: #3d361f;
+    --color-sand-700: #d4a661;
+
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-danger:  #f87171;
+
+    --color-surface:      #0b1410;
+    --color-surface-card: #11201a;
+    --color-surface-alt:  #11201a;
+
+    --color-ink:       #f0fdf4;
+    --color-ink-muted: #a7c5b3;
+    --color-ink-faint: #7a9e8a;
+
+    --color-border:        #22382d;
+    --color-border-strong: #2f4f3f;
+  }
+}
+
+/* ─── Typography Scale ──────────────────────────────────────────────────────── */
+
+@layer base {
+  .text-display {
+    font-size: 2.75rem;
+    line-height: 1.1;
+    font-weight: 700;
+  }
+
+  .text-h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  .text-h2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  .text-h3 {
+    font-size: 1.25rem;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  .text-small {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  .text-mono {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-weight: 500;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+}
+
+/* ─── Component Layer ───────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Primary button — forest green bg, white text */
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5
+           text-sm font-semibold text-white shadow-sm
+           transition-all duration-150 ease-in-out
+           hover:shadow-md hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-sm
+           focus-visible:outline-2 focus-visible:outline-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm;
+    background-color: var(--color-forest-600);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-forest-700);
+  }
+  .btn-primary:active {
+    background-color: var(--color-forest-700);
+  }
+  .btn-primary:focus-visible {
+    outline-color: var(--color-forest-500);
+  }
+
+  /* Secondary/outline button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border
+           bg-transparent px-4 py-2.5 text-sm font-medium
+           transition-all duration-150 ease-in-out
+           hover:shadow-sm hover:-translate-y-0.5
+           active:translate-y-0
+           focus-visible:outline-2 focus-visible:outline-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+    border-color: var(--color-border-strong);
+    color: var(--color-ink);
+  }
+  .btn-secondary:hover {
+    background-color: var(--color-forest-50);
+    border-color: var(--color-forest-500);
+  }
+  .btn-secondary:active {
+    background-color: var(--color-forest-50);
+  }
+  .btn-secondary:focus-visible {
+    outline-color: var(--color-forest-500);
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5
+           text-sm font-semibold text-white shadow-sm
+           transition-all duration-150 ease-in-out
+           hover:shadow-md hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-sm
+           focus-visible:outline-2 focus-visible:outline-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+    background-color: var(--color-danger);
+  }
+  .btn-danger:hover {
+    opacity: 0.9;
+  }
+  .btn-danger:focus-visible {
+    outline-color: var(--color-danger);
+  }
+
+  /* Card */
+  .card {
+    @apply rounded-xl p-6 shadow-sm transition-shadow duration-200;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-card);
+  }
+
+  /* Input */
+  .input {
+    @apply block w-full rounded-lg px-3 py-2.5
+           text-sm transition-all duration-150
+           focus:outline-none focus:ring-2;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+  .input::placeholder {
+    color: var(--color-ink-faint);
+  }
+  .input:focus {
+    border-color: var(--color-forest-500);
+    --tw-ring-color: color-mix(in srgb, var(--color-forest-500) 20%, transparent);
+  }
+
+  /* Select */
+  .select {
+    @apply block w-full rounded-lg px-3 py-2.5
+           text-sm transition-all duration-150
+           focus:outline-none focus:ring-2;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+  }
+  .select:focus {
+    border-color: var(--color-forest-500);
+    --tw-ring-color: color-mix(in srgb, var(--color-forest-500) 20%, transparent);
+  }
+
+  /* Badge — success */
+  .badge-success {
+    @apply inline-flex items-center rounded-full px-3 py-1
+           text-xs font-semibold;
+    background-color: color-mix(in srgb, var(--color-success) 15%, transparent);
+    color: var(--color-success);
+  }
+
+  /* Badge — danger */
+  .badge-danger {
+    @apply inline-flex items-center rounded-full px-3 py-1
+           text-xs font-semibold;
+    background-color: color-mix(in srgb, var(--color-danger) 15%, transparent);
+    color: var(--color-danger);
+  }
+
+  /* Badge — warning */
+  .badge-warning {
+    @apply inline-flex items-center rounded-full px-3 py-1
+           text-xs font-semibold;
+    background-color: color-mix(in srgb, var(--color-warning) 15%, transparent);
+    color: var(--color-warning);
+  }
+
+  /* Badge — neutral */
+  .badge-neutral {
+    @apply inline-flex items-center rounded-full px-3 py-1
+           text-xs font-semibold;
+    background-color: color-mix(in srgb, var(--color-ink-muted) 15%, transparent);
+    color: var(--color-ink-muted);
+  }
+
+  /* ─── Toast ──────────────────────────────────────────────────────────────── */
+
+  .toast-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 24rem;
+    pointer-events: none;
+  }
+
+  .toast {
+    @apply flex items-start gap-3 rounded-lg px-4 py-3 shadow-lg;
+    pointer-events: auto;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-card);
+    color: var(--color-ink);
+    animation: toast-slide-in 0.2s ease-out;
+  }
+
+  .toast-success {
+    border-left: 4px solid var(--color-success);
+  }
+  .toast-success .toast-icon {
+    color: var(--color-success);
+  }
+
+  .toast-warning {
+    border-left: 4px solid var(--color-warning);
+  }
+  .toast-warning .toast-icon {
+    color: var(--color-warning);
+  }
+
+  .toast-error {
+    border-left: 4px solid var(--color-danger);
+  }
+  .toast-error .toast-icon {
+    color: var(--color-danger);
+  }
+
+  .toast-message {
+    flex: 1;
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .toast-close {
+    @apply flex-shrink-0 rounded p-1;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+  }
+  .toast-close:hover {
+    color: var(--color-ink);
+    background-color: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  }
+  .toast-close:focus-visible {
+    outline: 2px solid var(--color-forest-500);
+    outline-offset: 2px;
+  }
+
+  @keyframes toast-slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* ─── Utilities ─────────────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}

@@ -14,23 +14,27 @@ export default function KpiSummary({
   onTrackStatus,
 }: KpiSummaryProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-500">Total Estimated Reduction</p>
-        <p className="text-2xl font-bold mt-1">
-          {totalReduction.toLocaleString()} t CO2e
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="card">
+        <p className="text-sm font-medium text-ink-muted">Total Estimated Reduction</p>
+        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+          {totalReduction.toLocaleString()} <span className="text-sm font-normal text-ink-faint">t CO2e</span>
         </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-500">% of Baseline Reduced</p>
-        <p className="text-2xl font-bold mt-1">{percentReduced.toFixed(1)}%</p>
+      <div className="card">
+        <p className="text-sm font-medium text-ink-muted">% of Baseline Reduced</p>
+        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+          {percentReduced.toFixed(1)}%
+        </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-500">Climate Actions</p>
-        <p className="text-2xl font-bold mt-1">{actionCount}</p>
+      <div className="card">
+        <p className="text-sm font-medium text-ink-muted">Climate Actions</p>
+        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+          {actionCount}
+        </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-sm text-gray-500">Status</p>
+      <div className="card">
+        <p className="text-sm font-medium text-ink-muted">Status</p>
         <div className="mt-2">
           <OnTrackBadge status={onTrackStatus} />
         </div>

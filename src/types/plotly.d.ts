@@ -42,7 +42,7 @@ declare namespace Plotly {
 
   interface Layout {
     title?: string | { text?: string; font?: { family?: string; size?: number } };
-    font?: { family?: string; size?: number };
+    font?: { family?: string; size?: number; color?: string };
     paper_bgcolor?: string;
     plot_bgcolor?: string;
     autosize?: boolean;

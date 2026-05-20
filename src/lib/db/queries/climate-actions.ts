@@ -1,5 +1,9 @@
 import { supabase } from '../supabase';
 import type { ClimateAction, Sector, ActionStatus } from '@/types';
+import { sortActionsByStartYearDescTitleAsc } from './climate-actions-sort';
+
+// Re-export the pure ordering helper so existing imports keep working.
+export { sortActionsByStartYearDescTitleAsc };
 
 /**
  * Maps a snake_case database row to a camelCase ClimateAction object.
@@ -22,6 +26,9 @@ function mapRowToAction(row: Record<string, unknown>): ClimateAction {
 
 /**
  * Public: get all actions for a city, sorted by start_year DESC then title ASC.
+ *
+ * The DB query also requests this order, but the result is re-sorted via the
+ * pure helper to guarantee the invariant regardless of underlying collation.
  */
 export async function getActionsByCity(cityId: string): Promise<ClimateAction[]> {
   const { data, error } = await supabase
@@ -35,7 +42,7 @@ export async function getActionsByCity(cityId: string): Promise<ClimateAction[]>
     throw new Error(`Failed to fetch actions for city: ${error.message}`);
   }
 
-  return (data ?? []).map(mapRowToAction);
+  return sortActionsByStartYearDescTitleAsc((data ?? []).map(mapRowToAction));
 }
 
 /**

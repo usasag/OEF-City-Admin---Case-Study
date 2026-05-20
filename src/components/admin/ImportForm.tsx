@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { importTextSchema } from '@/lib/validations/import';
 import { importClimateActions } from '@/actions/imports';
+import { useToast } from '@/components/ui/ToastProvider';
 import type { ExtractedAction } from '@/lib/ai/schema';
 import ImportReview from './ImportReview';
 
 const MAX_CHARS = 10000;
 
 export default function ImportForm() {
+  const { toast } = useToast();
   const [text, setText] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -41,15 +43,18 @@ export default function ImportForm() {
 
       if (result.success) {
         setExtractedActions(result.data.actions);
+        toast.success('Actions extracted successfully');
       } else {
         if (result.error.fieldErrors) {
           setFieldErrors(result.error.fieldErrors);
         } else {
           setServerError(result.error.message);
+          toast.error(result.error.message);
         }
       }
     } catch {
       setServerError('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

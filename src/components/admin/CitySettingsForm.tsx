@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import { citySchema, type CityFormData } from '@/lib/validations/city';
 import { updateCitySettings } from '@/actions/city';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface CitySettingsFormProps {
   initialData: CityFormData;
+  readOnly?: boolean;
 }
 
-export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
+export function CitySettingsForm({ initialData, readOnly = false }: CitySettingsFormProps) {
+  const { toast } = useToast();
   const [name, setName] = useState(initialData.name);
   const [baselineEmissions, setBaselineEmissions] = useState(
     String(initialData.baselineEmissions)
@@ -17,23 +20,19 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFieldErrors({});
     setServerError(null);
-    setSuccessMessage(null);
 
-    // Build form data object with proper types
     const formData = {
       name: name.trim(),
       baselineEmissions: parseFloat(baselineEmissions),
       targetYear: parseInt(targetYear, 10),
     };
 
-    // Client-side Zod validation
     const result = citySchema.safeParse(formData);
     if (!result.success) {
       const errors: Record<string, string> = {};
@@ -47,22 +46,23 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
       return;
     }
 
-    // Submit to server action
     setIsSubmitting(true);
     try {
       const response = await updateCitySettings(result.data);
 
       if (response.success) {
-        setSuccessMessage('City settings updated successfully.');
+        toast.success('City settings saved');
       } else {
         if (response.error.fieldErrors) {
           setFieldErrors(response.error.fieldErrors);
         } else {
           setServerError(response.error.message);
+          toast.error(response.error.message);
         }
       }
     } catch {
       setServerError('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -70,20 +70,14 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-      {successMessage && (
-        <div className="rounded-md bg-green-50 border border-green-200 p-4">
-          <p className="text-sm text-green-800">{successMessage}</p>
-        </div>
-      )}
-
       {serverError && (
-        <div className="rounded-md bg-red-50 border border-red-200 p-4">
-          <p className="text-sm text-red-800">{serverError}</p>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+          <p className="text-sm font-medium text-red-800 dark:text-red-300">{serverError}</p>
         </div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-ink">
           City Name
         </label>
         <input
@@ -91,21 +85,20 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            fieldErrors.name ? 'border-red-500' : 'border-gray-300'
-          }`}
+          disabled={readOnly}
+          className={`input ${fieldErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           aria-invalid={!!fieldErrors.name}
           aria-describedby={fieldErrors.name ? 'name-error' : undefined}
         />
         {fieldErrors.name && (
-          <p id="name-error" className="mt-1 text-sm text-red-600">
+          <p id="name-error" className="mt-1.5 text-sm text-red-600 dark:text-red-400">
             {fieldErrors.name}
           </p>
         )}
       </div>
 
       <div>
-        <label htmlFor="baselineEmissions" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="baselineEmissions" className="mb-1.5 block text-sm font-medium text-ink">
           Baseline Emissions (tonnes CO2e)
         </label>
         <input
@@ -115,21 +108,20 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
           min="0.01"
           value={baselineEmissions}
           onChange={(e) => setBaselineEmissions(e.target.value)}
-          className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            fieldErrors.baselineEmissions ? 'border-red-500' : 'border-gray-300'
-          }`}
+          disabled={readOnly}
+          className={`input ${fieldErrors.baselineEmissions ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           aria-invalid={!!fieldErrors.baselineEmissions}
           aria-describedby={fieldErrors.baselineEmissions ? 'baselineEmissions-error' : undefined}
         />
         {fieldErrors.baselineEmissions && (
-          <p id="baselineEmissions-error" className="mt-1 text-sm text-red-600">
+          <p id="baselineEmissions-error" className="mt-1.5 text-sm text-red-600 dark:text-red-400">
             {fieldErrors.baselineEmissions}
           </p>
         )}
       </div>
 
       <div>
-        <label htmlFor="targetYear" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="targetYear" className="mb-1.5 block text-sm font-medium text-ink">
           Target Year
         </label>
         <input
@@ -138,26 +130,23 @@ export function CitySettingsForm({ initialData }: CitySettingsFormProps) {
           step="1"
           value={targetYear}
           onChange={(e) => setTargetYear(e.target.value)}
-          className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            fieldErrors.targetYear ? 'border-red-500' : 'border-gray-300'
-          }`}
+          disabled={readOnly}
+          className={`input ${fieldErrors.targetYear ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
           aria-invalid={!!fieldErrors.targetYear}
           aria-describedby={fieldErrors.targetYear ? 'targetYear-error' : undefined}
         />
         {fieldErrors.targetYear && (
-          <p id="targetYear-error" className="mt-1 text-sm text-red-600">
+          <p id="targetYear-error" className="mt-1.5 text-sm text-red-600 dark:text-red-400">
             {fieldErrors.targetYear}
           </p>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isSubmitting ? 'Saving...' : 'Save Settings'}
-      </button>
+      {!readOnly && (
+        <button type="submit" disabled={isSubmitting} className="btn-primary">
+          {isSubmitting ? 'Saving...' : 'Save Settings'}
+        </button>
+      )}
     </form>
   );
 }

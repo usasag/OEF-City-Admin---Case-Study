@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import { ToastProvider } from "@/components/ui/ToastProvider";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "OEF City Climate Action Tracker",
@@ -11,8 +15,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body>
+          <ThemeProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

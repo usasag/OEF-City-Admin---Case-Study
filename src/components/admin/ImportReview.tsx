@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { approveImportedActions } from '@/actions/imports';
+import { useToast } from '@/components/ui/ToastProvider';
 import type { ExtractedAction } from '@/lib/ai/schema';
 import type { Sector, ActionStatus } from '@/types';
 
@@ -28,10 +29,10 @@ const STATUSES: { value: ActionStatus; label: string }[] = [
 
 export default function ImportReview({ actions: initialActions, onBack, onComplete }: ImportReviewProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [actions, setActions] = useState<ExtractedAction[]>(initialActions);
   const [isApproving, setIsApproving] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   function updateAction(index: number, field: keyof ExtractedAction, value: string | number) {
     setActions((prev) =>
@@ -55,8 +56,8 @@ export default function ImportReview({ actions: initialActions, onBack, onComple
       const result = await approveImportedActions(actions);
 
       if (result.success) {
-        setSuccessMessage(
-          `Successfully imported ${result.data.length} climate action${result.data.length !== 1 ? 's' : ''}.`
+        toast.success(
+          `Successfully imported ${result.data.length} climate action${result.data.length !== 1 ? 's' : ''}`
         );
         router.refresh();
         setTimeout(() => {
@@ -64,20 +65,14 @@ export default function ImportReview({ actions: initialActions, onBack, onComple
         }, 1500);
       } else {
         setServerError(result.error.message);
+        toast.error(result.error.message);
       }
     } catch {
       setServerError('An unexpected error occurred. Please try again.');
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsApproving(false);
     }
-  }
-
-  if (successMessage) {
-    return (
-      <div className="rounded-md bg-green-50 p-4">
-        <p className="text-sm font-medium text-green-700">{successMessage}</p>
-      </div>
-    );
   }
 
   return (

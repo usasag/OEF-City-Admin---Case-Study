@@ -55,6 +55,7 @@ export async function createImportAttempt(
 
 /**
  * Admin: get import attempts for a city (tenant-scoped).
+ * Sorted by created_at DESC (most recent first).
  */
 export async function getImportAttemptsByCity(
   cityId: string,
@@ -72,4 +73,34 @@ export async function getImportAttemptsByCity(
   }
 
   return (data ?? []).map(mapRowToImportAttempt);
+}
+
+/**
+ * Admin: get a single import attempt by ID (tenant-scoped).
+ * Returns null if not found or doesn't belong to the organization.
+ */
+export async function getImportAttemptById(
+  id: string,
+  organizationId: string
+): Promise<ImportAttempt | null> {
+  const { data, error } = await supabase
+    .from('import_attempts')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', organizationId)
+    .single();
+
+  if (error) {
+    // PGRST116 = "no rows returned" from .single() — treat as not found
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    throw new Error(`Failed to fetch import attempt: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapRowToImportAttempt(data);
 }

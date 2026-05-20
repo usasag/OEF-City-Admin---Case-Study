@@ -183,43 +183,105 @@ export async function getAllPublicCitiesWithStats(): Promise<CityWithStats[]> {
 // ─── Admin Multi-City Queries ────────────────────────────────────────────────
 
 /**
- * Admin: get all cities for an organization (tenant-scoped).
+ * Admin: get all cities accessible to an organization.
+ * Includes cities the org owns (organization_id = orgId) AND cities
+ * the org has been granted access to via the city_access table.
  * Returns all cities sorted alphabetically by name.
  */
 export async function getCitiesByOrgId(orgId: string): Promise<City[]> {
-  const { data, error } = await supabase
+  // 1. Cities owned by this org
+  const { data: ownedCities, error: ownedError } = await supabase
     .from('cities')
     .select('*')
     .eq('organization_id', orgId)
     .order('name', { ascending: true });
 
-  if (error) {
-    throw new Error(`Failed to fetch cities by organization: ${error.message}`);
+  if (ownedError) {
+    throw new Error(`Failed to fetch owned cities: ${ownedError.message}`);
   }
 
-  return (data || []).map(mapRowToCity);
+  // 2. Cities granted via city_access
+  const { data: accessGrants, error: accessError } = await supabase
+    .from('city_access')
+    .select('city_id')
+    .eq('organization_id', orgId);
+
+  if (accessError) {
+    throw new Error(`Failed to fetch city access grants: ${accessError.message}`);
+  }
+
+  const grantedCityIds = (accessGrants || []).map((g: { city_id: string }) => g.city_id);
+
+  let grantedCities: City[] = [];
+  if (grantedCityIds.length > 0) {
+    const { data: grantedData, error: grantedError } = await supabase
+      .from('cities')
+      .select('*')
+      .in('id', grantedCityIds)
+      .order('name', { ascending: true });
+
+    if (grantedError) {
+      throw new Error(`Failed to fetch granted cities: ${grantedError.message}`);
+    }
+
+    grantedCities = (grantedData || []).map(mapRowToCity);
+  }
+
+  // Merge and deduplicate (in case an org owns a city AND has an access grant)
+  const ownedMapped = (ownedCities || []).map(mapRowToCity);
+  const allCities = [...ownedMapped];
+  const seenIds = new Set(allCities.map((c) => c.id));
+
+  for (const city of grantedCities) {
+    if (!seenIds.has(city.id)) {
+      allCities.push(city);
+      seenIds.add(city.id);
+    }
+  }
+
+  // Sort alphabetically
+  allCities.sort((a, b) => a.name.localeCompare(b.name));
+  return allCities;
 }
 
 /**
- * Admin: get a specific city by slug within an organization (tenant-scoped).
+ * Admin: get a specific city by slug that is accessible to an organization.
+ * Checks both owned cities and cities granted via city_access.
  * Used for active city resolution in the Admin_Shell.
  */
 export async function getCityBySlugWithinOrg(orgId: string, citySlug: string): Promise<City | null> {
-  const { data, error } = await supabase
+  // First try: city owned by this org
+  const { data: ownedData, error: ownedError } = await supabase
     .from('cities')
     .select('*')
     .eq('organization_id', orgId)
     .eq('slug', citySlug)
     .single();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
-    throw new Error(`Failed to fetch city by slug within org: ${error.message}`);
+  if (ownedData && !ownedError) {
+    return mapRowToCity(ownedData);
   }
 
-  return mapRowToCity(data);
+  // Second try: city granted via city_access
+  const { data: cityBySlug } = await supabase
+    .from('cities')
+    .select('*')
+    .eq('slug', citySlug)
+    .single();
+
+  if (!cityBySlug) return null;
+
+  // Verify the org has an access grant for this city
+  const { data: grant } = await supabase
+    .from('city_access')
+    .select('id')
+    .eq('city_id', cityBySlug.id)
+    .eq('organization_id', orgId)
+    .single();
+
+  if (!grant) return null;
+
+  return mapRowToCity(cityBySlug);
 }
 
 // ─── Admin Org-Level KPI Helper ──────────────────────────────────────────────

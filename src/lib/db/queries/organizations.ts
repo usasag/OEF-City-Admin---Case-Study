@@ -147,3 +147,141 @@ export async function createOrganizationWithFirstCity(
     },
   };
 }
+
+// ─── Standalone Organization Creation ────────────────────────────────────────
+
+export interface CreateOrgInput {
+  name: string;
+  slug: string;
+  clerkOrgId: string;
+}
+
+export interface CreateOrgResult {
+  id: string;
+  name: string;
+  slug: string;
+  clerkOrgId: string;
+}
+
+/**
+ * Creates an Organization without a city.
+ * Used in the separated onboarding flow (Step 1: register org, Step 2: add city).
+ */
+export async function createOrganization(
+  input: CreateOrgInput
+): Promise<ActionResult<CreateOrgResult>> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .insert({
+      name: input.name,
+      slug: input.slug,
+      clerk_org_id: input.clerkOrgId,
+    })
+    .select('id, name, slug, clerk_org_id')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      if (error.message.includes('slug')) {
+        return {
+          success: false,
+          error: {
+            type: 'validation',
+            message: 'Organization slug is already in use',
+            fieldErrors: { organizationSlug: 'already in use' },
+          },
+        };
+      }
+      if (error.message.includes('clerk_org_id')) {
+        return {
+          success: false,
+          error: {
+            type: 'validation',
+            message: 'This Clerk organization is already registered',
+            fieldErrors: { organizationSlug: 'organization already registered' },
+          },
+        };
+      }
+      return {
+        success: false,
+        error: {
+          type: 'validation',
+          message: 'Organization slug is already in use',
+          fieldErrors: { organizationSlug: 'already in use' },
+        },
+      };
+    }
+    return {
+      success: false,
+      error: { type: 'server_error', message: 'Failed to create organization' },
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      clerkOrgId: data.clerk_org_id,
+    },
+  };
+}
+
+// ─── Standalone City Creation (for an existing org) ──────────────────────────
+
+export interface CreateCityInput {
+  organizationId: string;
+  name: string;
+  slug: string;
+  baselineEmissions: number;
+  targetYear: number;
+}
+
+export interface CreateCityResult {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/**
+ * Creates a City under an existing Organization.
+ * Used in the separated onboarding flow (Step 2: add first city).
+ */
+export async function createCityForOrg(
+  input: CreateCityInput
+): Promise<ActionResult<CreateCityResult>> {
+  const { data, error } = await supabase
+    .from('cities')
+    .insert({
+      organization_id: input.organizationId,
+      name: input.name,
+      slug: input.slug,
+      baseline_emissions: input.baselineEmissions,
+      target_year: input.targetYear,
+    })
+    .select('id, name, slug')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      return {
+        success: false,
+        error: {
+          type: 'validation',
+          message: 'City slug is already in use for this organization',
+          fieldErrors: { citySlug: 'already in use' },
+        },
+      };
+    }
+    return {
+      success: false,
+      error: { type: 'server_error', message: 'Failed to create city' },
+    };
+  }
+
+  return {
+    success: true,
+    data: { id: data.id, name: data.name, slug: data.slug },
+  };
+}

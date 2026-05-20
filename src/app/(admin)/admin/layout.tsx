@@ -1,14 +1,32 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import Link from 'next/link';
+import { auth } from '@clerk/nextjs/server';
 import { requireAuth } from '@/lib/auth/permissions';
 import { supabase } from '@/lib/db/supabase';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { Icon } from '@/components/ui/Icon';
 import { getCitiesByOrgId } from '@/lib/db/queries/cities';
 import { getActiveCity } from '@/lib/auth/active-city';
+import { NoOrgSelector } from '@/components/admin/NoOrgSelector';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // First check if user is signed in at all
+  const { userId, orgId } = await auth();
+
+  if (!userId) {
+    // Not signed in — redirect to sign-in (middleware should handle this,
+    // but this is a safety net)
+    redirect('/sign-in');
+  }
+
+  if (!orgId) {
+    // Signed in but no active Clerk organization selected.
+    // Show a page with OrganizationSwitcher so they can create/select one.
+    return <NoOrgSelector />;
+  }
+
+  // Now we know we have both userId and orgId — safe to call requireAuth
   let authCtx;
   try {
     authCtx = await requireAuth();
@@ -78,6 +96,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Organization exists — fetch cities and active city, then wrap children in AdminShell
   const cities = await getCitiesByOrgId(organization.id);
+
+  if (cities.length === 0) {
+    // Org registered but no cities yet — redirect to city setup (unless already there)
+    const headersList = await headers();
+    const pathname = headersList.get('x-next-pathname') || '/admin';
+
+    if (!pathname.startsWith('/admin/onboarding')) {
+      redirect('/admin/onboarding');
+    }
+    // Already on onboarding — render without shell so the city setup form shows
+    return <>{children}</>;
+  }
+
   const activeCity = await getActiveCity(organization.id);
 
   const citiesForSwitcher = cities.map((c) => ({ slug: c.slug, name: c.name }));

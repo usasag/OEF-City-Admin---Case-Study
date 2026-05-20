@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   registerOrganizationInputSchema,
-  registerOrganization,
   type RegisterOrganizationInput,
-} from '@/actions/onboarding';
+} from '@/lib/validations/onboarding';
+import { registerOrganization } from '@/actions/onboarding';
 
 export function OnboardingWizard() {
   const router = useRouter();

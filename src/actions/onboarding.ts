@@ -1,6 +1,5 @@
 'use server';
 
-import { z } from 'zod';
 import { cookies } from 'next/headers';
 import type { ActionResult } from '@/types';
 import { requireAuth, requireRole } from '@/lib/auth/permissions';
@@ -9,42 +8,20 @@ import {
   createOrganizationWithFirstCity,
   type CreateOrgWithCityResult,
 } from '@/lib/db/queries/organizations';
-import { getCityBySlugWithinOrg } from '@/lib/db/queries/cities';
-
-// ─── Combined Input Schema ──────────────────────────────────────────────────
-
-const currentYear = new Date().getFullYear();
-
-export const registerOrganizationInputSchema = z.object({
-  organizationName: z
-    .string()
-    .min(1, 'Organization name is required')
-    .max(100, 'Organization name must be at most 100 characters'),
-  organizationSlug: z
-    .string()
-    .min(1, 'Organization slug is required')
-    .max(50, 'Organization slug must be at most 50 characters')
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
-  cityName: z
-    .string()
-    .min(1, 'City name is required')
-    .max(100, 'City name must be at most 100 characters'),
-  citySlug: z
-    .string()
-    .min(1, 'City slug is required')
-    .max(50, 'City slug must be at most 50 characters')
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
-  baselineEmissions: z
-    .number()
-    .min(0.01, 'Baseline emissions must be at least 0.01')
-    .max(999_999_999.99, 'Baseline emissions must not exceed 999,999,999.99'),
-  targetYear: z
-    .number()
-    .int('Target year must be a whole number')
-    .min(currentYear + 1, `Target year must be greater than ${currentYear}`),
-});
-
-export type RegisterOrganizationInput = z.infer<typeof registerOrganizationInputSchema>;
+import { getCityBySlug, getCityBySlugWithinOrg } from '@/lib/db/queries/cities';
+import { grantCityAccess } from '@/lib/db/queries/city-access';
+import {
+  registerOrganizationInputSchema,
+  joinCityInputSchema,
+  type RegisterOrganizationInput,
+  type JoinCityInput,
+} from '@/lib/validations/onboarding';
+import {
+  createOrganization,
+  createCityForOrg,
+  type CreateOrgResult,
+  type CreateCityResult,
+} from '@/lib/db/queries/organizations';
 
 // ─── registerOrganization Server Action ─────────────────────────────────────
 
@@ -171,5 +148,225 @@ export async function setActiveCity(
       success: false,
       error: { type: 'server_error', message: 'An unexpected error occurred' },
     };
+  }
+}
+
+// ─── joinExistingCity Server Action ─────────────────────────────────────────
+
+/**
+ * Allows an organization to join an existing city by its slug.
+ * Creates a city_access grant so the org can read/write the city's data.
+ * Pipeline: requireAuth → assert admin → validate → find city → grant access.
+ */
+export async function joinExistingCity(
+  input: JoinCityInput
+): Promise<ActionResult<{ citySlug: string; cityName: string }>> {
+  try {
+    // 1. Authenticate
+    const authCtx = await requireAuth();
+
+    // 2. Assert Clerk org admin role
+    requireRole(authCtx, ['admin']);
+
+    // 3. Resolve internal org
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('clerk_org_id', authCtx.organizationId)
+      .single();
+
+    if (!org) {
+      return {
+        success: false,
+        error: {
+          type: 'validation',
+          message: 'Your organization must be registered first. Please complete onboarding.',
+        },
+      };
+    }
+
+    // 4. Validate input
+    const parsed = joinCityInputSchema.safeParse(input);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0]?.toString();
+        if (field) fieldErrors[field] = issue.message;
+      }
+      return {
+        success: false,
+        error: { type: 'validation', message: 'Invalid input', fieldErrors },
+      };
+    }
+
+    // 5. Find the city by slug
+    const city = await getCityBySlug(parsed.data.citySlug);
+    if (!city) {
+      return {
+        success: false,
+        error: {
+          type: 'not_found',
+          message: `No city found with slug "${parsed.data.citySlug}". Check the slug and try again.`,
+          fieldErrors: { citySlug: 'City not found' },
+        },
+      };
+    }
+
+    // 6. Check if org already owns this city
+    if (city.organizationId === org.id) {
+      return {
+        success: false,
+        error: {
+          type: 'validation',
+          message: 'Your organization already owns this city',
+        },
+      };
+    }
+
+    // 7. Grant access
+    const grantResult = await grantCityAccess(city.id, org.id, authCtx.userId);
+    if (!grantResult.success) {
+      return grantResult as ActionResult<{ citySlug: string; cityName: string }>;
+    }
+
+    return {
+      success: true,
+      data: { citySlug: city.slug, cityName: city.name },
+    };
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'type' in err) {
+      const authErr = err as { type: string; message: string };
+      return {
+        success: false,
+        error: { type: 'authorization', message: authErr.message },
+      };
+    }
+    return {
+      success: false,
+      error: { type: 'server_error', message: 'An unexpected error occurred' },
+    };
+  }
+}
+
+// ─── registerOrganizationOnly Server Action ─────────────────────────────────
+
+import { z } from 'zod';
+
+const registerOrgOnlySchema = z.object({
+  organizationName: z.string().min(1, 'Organization name is required').max(100),
+  organizationSlug: z.string().min(1, 'Slug is required').max(50).regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
+});
+
+export type RegisterOrgOnlyInput = z.infer<typeof registerOrgOnlySchema>;
+
+/**
+ * Step 1 of separated onboarding: register the organization only (no city).
+ * After this succeeds, the user is redirected to add their first city.
+ */
+export async function registerOrganizationOnly(
+  input: RegisterOrgOnlyInput
+): Promise<ActionResult<CreateOrgResult>> {
+  try {
+    const authCtx = await requireAuth();
+    requireRole(authCtx, ['admin']);
+
+    // Reject if already registered
+    const { data: existing } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('clerk_org_id', authCtx.organizationId)
+      .single();
+
+    if (existing) {
+      return {
+        success: false,
+        error: { type: 'validation', message: 'Organization already registered' },
+      };
+    }
+
+    // Validate
+    const parsed = registerOrgOnlySchema.safeParse(input);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0]?.toString();
+        if (field) fieldErrors[field] = issue.message;
+      }
+      return { success: false, error: { type: 'validation', message: 'Invalid input', fieldErrors } };
+    }
+
+    // Create
+    return await createOrganization({
+      name: parsed.data.organizationName,
+      slug: parsed.data.organizationSlug,
+      clerkOrgId: authCtx.organizationId,
+    });
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'type' in err && 'message' in err) {
+      return { success: false, error: { type: 'authorization', message: String((err as Record<string, unknown>).message) } };
+    }
+    return { success: false, error: { type: 'server_error', message: 'An unexpected error occurred' } };
+  }
+}
+
+// ─── createFirstCity Server Action ──────────────────────────────────────────
+
+const createCitySchema = z.object({
+  cityName: z.string().min(1, 'City name is required').max(100),
+  citySlug: z.string().min(1, 'Slug is required').max(50).regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
+  baselineEmissions: z.number().min(0.01).max(999_999_999.99),
+  targetYear: z.number().int().min(new Date().getFullYear() + 1),
+});
+
+export type CreateFirstCityInput = z.infer<typeof createCitySchema>;
+
+/**
+ * Step 2 of separated onboarding: create the first city for an already-registered org.
+ */
+export async function createFirstCity(
+  input: CreateFirstCityInput
+): Promise<ActionResult<CreateCityResult>> {
+  try {
+    const authCtx = await requireAuth();
+    requireRole(authCtx, ['admin']);
+
+    // Resolve internal org
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('clerk_org_id', authCtx.organizationId)
+      .single();
+
+    if (!org) {
+      return {
+        success: false,
+        error: { type: 'validation', message: 'Organization not registered. Please register first.' },
+      };
+    }
+
+    // Validate
+    const parsed = createCitySchema.safeParse(input);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0]?.toString();
+        if (field) fieldErrors[field] = issue.message;
+      }
+      return { success: false, error: { type: 'validation', message: 'Invalid input', fieldErrors } };
+    }
+
+    // Create city
+    return await createCityForOrg({
+      organizationId: org.id,
+      name: parsed.data.cityName,
+      slug: parsed.data.citySlug,
+      baselineEmissions: parsed.data.baselineEmissions,
+      targetYear: parsed.data.targetYear,
+    });
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'type' in err && 'message' in err) {
+      return { success: false, error: { type: 'authorization', message: String((err as Record<string, unknown>).message) } };
+    }
+    return { success: false, error: { type: 'server_error', message: 'An unexpected error occurred' } };
   }
 }

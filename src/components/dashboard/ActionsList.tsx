@@ -41,7 +41,7 @@ export default function ActionsList({ actions }: ActionsListProps) {
         </thead>
         <tbody className="divide-y divide-border bg-surface-card">
           {actions.map((action) => (
-            <tr key={action.id} className="transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10">
+            <tr key={action.id} className="transition-colors hover:bg-forest-50/50 dark:hover:bg-forest-50/10">
               <td className="px-6 py-4 text-sm font-medium text-ink">
                 {action.title}
               </td>

@@ -17,19 +17,19 @@ export default function KpiSummary({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="card">
         <p className="text-sm font-medium text-ink-muted">Total Estimated Reduction</p>
-        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+        <p className="mt-1 text-2xl font-bold text-forest-700 dark:text-forest-500">
           {totalReduction.toLocaleString()} <span className="text-sm font-normal text-ink-faint">t CO2e</span>
         </p>
       </div>
       <div className="card">
         <p className="text-sm font-medium text-ink-muted">% of Baseline Reduced</p>
-        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+        <p className="mt-1 text-2xl font-bold text-forest-700 dark:text-forest-500">
           {percentReduced.toFixed(1)}%
         </p>
       </div>
       <div className="card">
         <p className="text-sm font-medium text-ink-muted">Climate Actions</p>
-        <p className="mt-1 text-2xl font-bold text-cyan-700 dark:text-cyan-400">
+        <p className="mt-1 text-2xl font-bold text-forest-700 dark:text-forest-500">
           {actionCount}
         </p>
       </div>

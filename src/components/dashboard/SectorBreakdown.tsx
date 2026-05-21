@@ -26,7 +26,7 @@ export default function SectorBreakdown({ sectorData }: SectorBreakdownProps) {
       {activeSectors.map(([sector, reduction]) => (
         <div key={sector} className="card">
           <p className="text-sm font-medium text-ink-muted">{SECTOR_LABELS[sector]}</p>
-          <p className="mt-1 text-xl font-semibold text-cyan-700 dark:text-cyan-400">
+          <p className="mt-1 text-xl font-semibold text-forest-700 dark:text-forest-500">
             {reduction.toLocaleString()} <span className="text-sm font-normal text-ink-faint">t CO2e/yr</span>
           </p>
         </div>

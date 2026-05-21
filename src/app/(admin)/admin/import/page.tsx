@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/permissions';
 import { supabase } from '@/lib/db/supabase';
 import { getActiveCity } from '@/lib/auth/active-city';
+import { getImportAttemptsByCity } from '@/lib/db/queries/import-attempts';
 import ImportForm from '@/components/admin/ImportForm';
+import { ImportHistorySection } from '@/components/admin/ImportHistorySection';
 
 export default async function ImportPage() {
   const authCtx = await requireAuth();
@@ -33,14 +35,20 @@ export default async function ImportPage() {
     );
   }
 
+  // Fetch import history for this city
+  const importAttempts = await getImportAttemptsByCity(activeCity.id, org.id);
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-ink">Import Climate Actions — {activeCity.name}</h1>
-      <p className="mt-2 text-sm text-ink-muted">
-        Paste free-text descriptions of climate actions below. The AI will extract
-        structured data for your review before importing.
-      </p>
-      <div className="mt-6">
+    <main className="mx-auto max-w-3xl px-4 py-8 space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-ink">Import Climate Actions — {activeCity.name}</h1>
+        <p className="mt-2 text-sm text-ink-muted">
+          Paste free-text descriptions of climate actions below. The AI will extract
+          structured data for your review before importing.
+        </p>
+      </div>
+
+      <div>
         {canEdit ? (
           <ImportForm />
         ) : (
@@ -51,6 +59,9 @@ export default async function ImportPage() {
           </div>
         )}
       </div>
+
+      {/* Import History — collapsible section */}
+      <ImportHistorySection attempts={importAttempts} />
     </main>
   );
 }

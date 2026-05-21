@@ -5,6 +5,8 @@ import type { ExtractedAction } from '@/lib/ai/schema';
 import { requireAuth, requireRole } from '@/lib/auth/permissions';
 import { importTextSchema } from '@/lib/validations/import';
 import { getCityByOrgId } from '@/lib/db/queries/cities';
+import { createImportAttempt } from '@/lib/db/queries/import-attempts';
+import { getActiveCity } from '@/lib/auth/active-city';
 
 export interface ImportResult {
   actions: ExtractedAction[];
@@ -38,19 +40,33 @@ export async function importClimateActions(
       };
     }
 
-    // 4. Get city for this org
-    const city = await getCityByOrgId(authCtx.organizationId);
+    // 4. Get active city for this org
+    const city = await getActiveCity(authCtx.organizationId);
     if (!city) {
       return {
         success: false,
-        error: { type: 'not_found', message: 'City not found for this organization' },
+        error: { type: 'not_found', message: 'No active city found for this organization' },
       };
     }
 
-    // 5. Call LLM extractor (to be implemented in task 9.5)
-    // For now, return a placeholder that will be replaced
+    // 5. Call LLM extractor
     const { extractClimateActions } = await import('@/lib/ai/extract-climate-actions');
     const result = await extractClimateActions({ text, cityName: city.name });
+
+    // 6. Log the import attempt (audit)
+    const status = result.status === 'success'
+      ? 'success'
+      : result.status === 'partial'
+        ? 'partial'
+        : 'failed';
+
+    await createImportAttempt(authCtx.organizationId, city.id, {
+      inputText: text,
+      provider: result.provider,
+      model: result.model,
+      parsedJson: result.actions.length > 0 ? result.actions : null,
+      status,
+    });
 
     if (result.status === 'failed') {
       return {
@@ -98,12 +114,12 @@ export async function approveImportedActions(
     // 2. Check role (admin or editor)
     requireRole(authCtx, ['admin', 'editor']);
 
-    // 3. Get city for this org
-    const city = await getCityByOrgId(authCtx.organizationId);
+    // 3. Get active city for this org
+    const city = await getActiveCity(authCtx.organizationId);
     if (!city) {
       return {
         success: false,
-        error: { type: 'not_found', message: 'City not found for this organization' },
+        error: { type: 'not_found', message: 'No active city found for this organization' },
       };
     }
 

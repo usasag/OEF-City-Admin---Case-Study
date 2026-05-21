@@ -10,9 +10,7 @@ interface AdminNavLinkProps {
 
 export function AdminNavLink({ href, children }: AdminNavLinkProps) {
   const pathname = usePathname();
-  const isActive = href === '/admin'
-    ? pathname === '/admin'
-    : pathname.startsWith(href);
+  const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href + '/'));
 
   return (
     <Link

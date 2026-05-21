@@ -80,7 +80,7 @@ export default function ActionsTable({ actions, canEdit = true }: ActionsTablePr
             </thead>
             <tbody className="divide-y divide-border bg-surface-card">
               {actions.map((action) => (
-                <tr key={action.id} className="transition-colors hover:bg-cyan-50/50 dark:hover:bg-cyan-900/10">
+                <tr key={action.id} className="transition-colors hover:bg-forest-50/50 dark:hover:bg-forest-50/10">
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-ink">{action.title}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-muted">{SECTOR_LABELS[action.sector] ?? action.sector}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-muted">{action.annualReduction.toLocaleString()} t CO2e</td>
@@ -91,10 +91,10 @@ export default function ActionsTable({ actions, canEdit = true }: ActionsTablePr
                       <button
                         type="button"
                         onClick={() => setEditingAction(action)}
-                        className="mr-2 rounded-md px-2 py-1 text-cyan-600 transition-all duration-150
-                                   hover:bg-cyan-50 hover:text-cyan-800
-                                   active:bg-cyan-100
-                                   dark:text-cyan-400 dark:hover:bg-slate-800 dark:hover:text-cyan-300"
+                        className="mr-2 rounded-md px-2 py-1 text-forest-600 transition-all duration-150
+                                   hover:bg-forest-50 hover:text-forest-700
+                                   active:bg-forest-100
+                                   dark:text-forest-500 dark:hover:bg-forest-50/10 dark:hover:text-forest-400"
                       >
                         Edit
                       </button>

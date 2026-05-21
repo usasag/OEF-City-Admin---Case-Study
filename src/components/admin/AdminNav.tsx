@@ -5,7 +5,6 @@ const navLinks = [
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/actions', label: 'Actions' },
   { href: '/admin/import', label: 'Import' },
-  { href: '/admin/imports', label: 'Imports' },
   { href: '/admin/analytics', label: 'Analytics' },
 ];
 

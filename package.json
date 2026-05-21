@@ -11,13 +11,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.78",
-    "@ai-sdk/google": "^3.0.75",
-    "@ai-sdk/openai": "^3.0.64",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/postcss": "^4.3.0",
-    "ai": "^6.0.185",
     "next": "^16.2.6",
     "plotly.js": "^3.5.1",
     "postcss": "^8.5.15",
@@ -32,9 +28,11 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "dotenv": "^17.4.2",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "fast-check": "^4.8.0",
+    "openai": "^6.38.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   }

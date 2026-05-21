@@ -37,3 +37,15 @@ Used Kiro's spec-driven workflow:
 4. **Execution** — Tasks dispatched in waves (parallel where no dependencies). Steering files enforced project conventions (Tailwind design tokens, Zod 4 patterns, Server Action pipeline).
 
 The spec served as the single source of truth throughout. When implementation diverged (e.g., the AI SDK swap), the spec was updated to reflect reality.
+
+## 5. What I'd build next (given more time)
+
+- **Batch import from documents** — Upload PDFs/CSVs of climate action plans and extract multiple actions in one pass, with progress tracking
+- **Collaboration features** — Comments on actions, change history/audit trail, notification when actions are updated
+- **Data validation against external sources** — Cross-reference reduction estimates with published emission factors (e.g., EPA, IPCC) to flag unrealistic claims
+- **Public API** — REST/GraphQL endpoint so other tools (city dashboards, reporting systems) can pull climate action data programmatically
+- **Comparative analytics** — Compare progress across cities in the same organization, benchmark against similar-sized cities
+- **Email notifications** — Alert admins when actions go off-track or when new members join the organization
+- **Proper invitation system** — Instead of open "join by slug", implement invite links with expiry and role assignment
+- **E2E tests** — Playwright tests covering the full user journey (sign up → onboard → import → approve → view dashboard)
+- **Deploy to Vercel** — Production deployment with proper domain, edge caching for public dashboard, and rate limiting on the AI endpoint

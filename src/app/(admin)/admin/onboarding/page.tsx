@@ -134,9 +134,7 @@ export default async function OnboardingPage() {
         </div>
 
         {step === 'org' ? (
-          <div className="card p-6">
-            <RegisterOrgForm />
-          </div>
+          <OrgOnboardingTabs />
         ) : (
           <OnboardingTabsClient />
         )}

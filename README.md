@@ -2,6 +2,30 @@
 
 A multi-tenant web application that helps cities track, visualize, and manage their climate action initiatives.
 
+## Quick Start (pre-configured database)
+
+A Supabase instance is already provisioned with all migrations applied and seed data loaded. To run the project:
+
+```bash
+git clone https://github.com/usasag/OEF-City-Admin---Case-Study.git
+cd OEF-City-Admin---Case-Study
+npm install
+```
+
+Drop the provided `.env.local` file into the project root (sent separately), then:
+
+```bash
+npm run dev
+```
+
+Open:
+- **Public dashboard**: [http://localhost:3000/cities/greenville](http://localhost:3000/cities/greenville)
+- **Admin workspace**: [http://localhost:3000/admin](http://localhost:3000/admin) (sign up with any email/password)
+
+> The AI import feature requires a valid `GITHUB_TOKEN` with access to GitHub Models. If you don't have one, all other features still work.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -15,7 +39,9 @@ A multi-tenant web application that helps cities track, visualize, and manage th
 | AI | OpenAI SDK (via GitHub Models endpoint) |
 | Testing | Vitest + fast-check (property-based testing) |
 
-## Getting Started
+## Full Setup (from scratch)
+
+If you want to set up your own Supabase instance:
 
 ### 1. Install Dependencies
 
@@ -42,18 +68,15 @@ Required variables:
 
 ### 3. Set Up the Database
 
-Run the migration files in `supabase/migrations/` in order against your Supabase project (via the SQL Editor in the Supabase dashboard).
+Run the migration files in `supabase/migrations/` in order (001 through 008) against your Supabase project via the SQL Editor.
 
-Then run `supabase/seed.sql` to create demo data. This seeds **Greenville** with a 500,000 t CO2e baseline, 2035 target year, and 6 sample climate actions across all sectors.
+Then run `supabase/seed.sql` to create demo data. This seeds **Greenville** with a 500,000 t CO2e baseline, 2035 target year, and 6 sample climate actions matching the exercise specification.
 
 ### 4. Run the Development Server
 
 ```bash
 npm run dev
 ```
-
-- Public dashboard: [http://localhost:3000/cities/greenville](http://localhost:3000/cities/greenville)
-- Admin workspace: [http://localhost:3000/admin](http://localhost:3000/admin) (requires sign-in)
 
 ## Available Scripts
 

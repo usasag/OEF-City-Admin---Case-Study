@@ -3,7 +3,7 @@
 ## 1. Which AI tools I used
 
 - **Kiro** — AI-powered IDE with spec-driven development workflow
-- **Claude** — Underlying LLM model for code generation and reasoning
+- **Claude Model Family** — Underlying LLM model for code generation and reasoning
 - **Workflow**: Spec creation (requirements → design → tasks), then automated task execution with parallel dispatch across independent tasks
 
 ## 2. One moment where AI saved significant time

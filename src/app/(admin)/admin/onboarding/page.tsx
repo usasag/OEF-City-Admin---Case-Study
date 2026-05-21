@@ -4,7 +4,7 @@ import { supabase } from '@/lib/db/supabase';
 import { Icon } from '@/components/ui/Icon';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import Link from 'next/link';
-import { RegisterOrgForm } from '@/components/admin/RegisterOrgForm';
+import { OrgOnboardingTabs } from '@/components/admin/OrgOnboardingTabs';
 import { OnboardingTabsClient } from '@/components/admin/OnboardingTabsClient';
 
 export default async function OnboardingPage() {
@@ -52,12 +52,10 @@ export default async function OnboardingPage() {
             </div>
             <h1 className="mt-4 text-2xl font-bold text-ink">Register Your Organization</h1>
             <p className="mt-2 text-center text-sm text-ink-muted">
-              Set up your organization in the Climate Action Tracker.
+              Create a new organization or join an existing one.
             </p>
           </div>
-          <div className="card p-6">
-            <RegisterOrgForm />
-          </div>
+          <OrgOnboardingTabs />
           <div className="mt-6 text-center">
             <Link href="/" className="text-sm text-ink-muted hover:text-ink transition-colors">
               ← Back to home

@@ -411,3 +411,84 @@ export async function createFirstCity(
     return { success: false, error: { type: 'server_error', message: 'An unexpected error occurred' } };
   }
 }
+
+// ─── joinExistingOrg Server Action ──────────────────────────────────────────
+
+/**
+ * Allows a signed-in user (with no org membership) to join an existing organization by slug.
+ * Creates a user_memberships row with 'editor' role (not admin — only the creator is admin).
+ */
+export async function joinExistingOrg(
+  input: { orgSlug: string }
+): Promise<ActionResult<{ orgName: string; orgSlug: string }>> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: { type: 'authorization', message: 'Authentication required' } };
+    }
+
+    const slug = input.orgSlug?.trim().toLowerCase();
+    if (!slug) {
+      return {
+        success: false,
+        error: { type: 'validation', message: 'Organization slug is required', fieldErrors: { orgSlug: 'Required' } },
+      };
+    }
+
+    // Find the organization by slug
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id, name, slug')
+      .eq('slug', slug)
+      .single();
+
+    if (!org) {
+      return {
+        success: false,
+        error: {
+          type: 'not_found',
+          message: `No organization found with slug "${slug}".`,
+          fieldErrors: { orgSlug: 'Organization not found' },
+        },
+      };
+    }
+
+    // Check if user already has a membership in this org
+    const { data: existingMembership } = await supabase
+      .from('user_memberships')
+      .select('id')
+      .eq('user_id', session.userId)
+      .eq('organization_id', org.id)
+      .single();
+
+    if (existingMembership) {
+      return {
+        success: false,
+        error: { type: 'validation', message: 'You are already a member of this organization' },
+      };
+    }
+
+    // Create membership with 'editor' role (joiners get editor, not admin)
+    const { error: membershipError } = await supabase
+      .from('user_memberships')
+      .insert({
+        user_id: session.userId,
+        organization_id: org.id,
+        role: 'editor',
+      });
+
+    if (membershipError) {
+      return {
+        success: false,
+        error: { type: 'server_error', message: 'Failed to join organization' },
+      };
+    }
+
+    return {
+      success: true,
+      data: { orgName: org.name, orgSlug: org.slug },
+    };
+  } catch {
+    return { success: false, error: { type: 'server_error', message: 'An unexpected error occurred' } };
+  }
+}

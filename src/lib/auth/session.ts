@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from './supabase-auth';
+import { createSupabaseServerClient } from './supabase-server';
 
 /**
  * Reads the current Supabase session from cookies (server-side).

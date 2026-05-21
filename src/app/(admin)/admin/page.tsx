@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/permissions';
 import { supabase } from '@/lib/db/supabase';
 import { getCitiesByOrgIdWithStats, type CityWithOrgStats } from '@/lib/db/queries/cities';
@@ -7,7 +8,12 @@ import OnTrackBadge from '@/components/dashboard/OnTrackBadge';
 import { Icon } from '@/components/ui/Icon';
 
 export default async function AdminHomePage() {
-  const authCtx = await requireAuth();
+  let authCtx;
+  try {
+    authCtx = await requireAuth();
+  } catch {
+    redirect('/admin/onboarding');
+  }
 
   // Resolve internal org ID from user membership
   const { data: org } = await supabase
@@ -17,15 +23,7 @@ export default async function AdminHomePage() {
     .single();
 
   if (!org) {
-    return (
-      <EmptyState
-        icon="city"
-        title="Organization not found"
-        description="Your organization has not been set up yet."
-        actionLabel="Set up organization"
-        actionHref="/admin/onboarding"
-      />
-    );
+    redirect('/admin/onboarding');
   }
 
   const cities = await getCitiesByOrgIdWithStats(org.id);

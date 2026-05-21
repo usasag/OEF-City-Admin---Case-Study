@@ -9,11 +9,11 @@ export default async function ActionsPage() {
   const authCtx = await requireAuth();
   const canEdit = authCtx.role === 'admin' || authCtx.role === 'editor';
 
-  // Resolve internal org ID from Clerk org ID
+  // Resolve internal org ID from user membership
   const { data: org } = await supabase
     .from('organizations')
     .select('id')
-    .eq('clerk_org_id', authCtx.organizationId)
+    .eq('id', authCtx.organizationId)
     .single();
 
   if (!org) {

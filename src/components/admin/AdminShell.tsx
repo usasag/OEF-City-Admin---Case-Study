@@ -1,7 +1,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { AdminNav } from './AdminNav';
-import { AdminShellClerkControls } from './AdminShellClerkControls';
+import { AdminShellUserControls } from './AdminShellUserControls';
 import { CitySwitcher } from './CitySwitcher';
 
 interface AdminShellProps {
@@ -27,7 +27,7 @@ export function AdminShell({ children, cities, activeCitySlug }: AdminShellProps
             {cities && (
               <CitySwitcher cities={cities} activeCitySlug={activeCitySlug ?? null} />
             )}
-            <AdminShellClerkControls />
+            <AdminShellUserControls />
             <div className="border-l border-border pl-3">
               <ThemeToggle />
             </div>

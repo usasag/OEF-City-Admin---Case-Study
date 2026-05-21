@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import type { ActionResult } from '@/types';
 import { requireAuth, requireRole } from '@/lib/auth/permissions';
+import { getSession } from '@/lib/auth/session';
 import { supabase } from '@/lib/db/supabase';
 import {
   createOrganizationWithFirstCity,
@@ -27,7 +28,7 @@ import {
 
 /**
  * Registers a new organization and creates its first city.
- * Pipeline: requireAuth → assert admin → reject if already registered → validate → create → return result.
+ * Also creates a user_memberships row linking the current user to the new org.
  */
 export async function registerOrganization(
   input: RegisterOrganizationInput
@@ -36,22 +37,23 @@ export async function registerOrganization(
     // 1. Authenticate
     const authCtx = await requireAuth();
 
-    // 2. Assert Clerk org admin role (only admins can register)
+    // 2. Assert admin role
     requireRole(authCtx, ['admin']);
 
-    // 3. Reject if organization already exists for this clerk_org_id
-    const { data: existingOrg } = await supabase
-      .from('organizations')
+    // 3. Reject if user already has an organization
+    const { data: existingMembership } = await supabase
+      .from('user_memberships')
       .select('id')
-      .eq('clerk_org_id', authCtx.organizationId)
+      .eq('user_id', authCtx.userId)
+      .limit(1)
       .single();
 
-    if (existingOrg) {
+    if (existingMembership) {
       return {
         success: false,
         error: {
           type: 'validation',
-          message: 'Organization already registered',
+          message: 'You already belong to an organization',
         },
       };
     }
@@ -83,6 +85,15 @@ export async function registerOrganization(
       targetYear: parsed.data.targetYear,
     });
 
+    // 6. If successful, create user_memberships row
+    if (result.success) {
+      await supabase.from('user_memberships').insert({
+        user_id: authCtx.userId,
+        organization_id: result.data.organization.id,
+        role: 'admin',
+      });
+    }
+
     return result;
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'type' in err) {
@@ -111,8 +122,22 @@ export async function setActiveCity(
     // 1. Authenticate
     const authCtx = await requireAuth();
 
-    // 2. Verify the city belongs to the user's organization
-    const city = await getCityBySlugWithinOrg(authCtx.organizationId, slug);
+    // 2. Resolve internal org from membership
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('id', authCtx.organizationId)
+      .single();
+
+    if (!org) {
+      return {
+        success: false,
+        error: { type: 'not_found', message: 'Organization not found' },
+      };
+    }
+
+    // 3. Verify the city belongs to the user's organization
+    const city = await getCityBySlugWithinOrg(org.id, slug);
     if (!city) {
       return {
         success: false,
@@ -123,7 +148,7 @@ export async function setActiveCity(
       };
     }
 
-    // 3. Set the oef_active_city cookie
+    // 4. Set the oef_active_city cookie
     const cookieStore = await cookies();
     const isProduction = process.env.NODE_ENV === 'production';
     const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
@@ -156,7 +181,6 @@ export async function setActiveCity(
 /**
  * Allows an organization to join an existing city by its slug.
  * Creates a city_access grant so the org can read/write the city's data.
- * Pipeline: requireAuth → assert admin → validate → find city → grant access.
  */
 export async function joinExistingCity(
   input: JoinCityInput
@@ -165,14 +189,14 @@ export async function joinExistingCity(
     // 1. Authenticate
     const authCtx = await requireAuth();
 
-    // 2. Assert Clerk org admin role
+    // 2. Assert admin role
     requireRole(authCtx, ['admin']);
 
     // 3. Resolve internal org
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
-      .eq('clerk_org_id', authCtx.organizationId)
+      .eq('id', authCtx.organizationId)
       .single();
 
     if (!org) {
@@ -261,26 +285,32 @@ export type RegisterOrgOnlyInput = z.infer<typeof registerOrgOnlySchema>;
 
 /**
  * Step 1 of separated onboarding: register the organization only (no city).
- * After this succeeds, the user is redirected to add their first city.
+ * Also creates a user_memberships row linking the current user to the new org.
  */
 export async function registerOrganizationOnly(
   input: RegisterOrgOnlyInput
 ): Promise<ActionResult<CreateOrgResult>> {
   try {
-    const authCtx = await requireAuth();
-    requireRole(authCtx, ['admin']);
-
-    // Reject if already registered
-    const { data: existing } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('clerk_org_id', authCtx.organizationId)
-      .single();
-
-    if (existing) {
+    const session = await getSession();
+    if (!session) {
       return {
         success: false,
-        error: { type: 'validation', message: 'Organization already registered' },
+        error: { type: 'authorization', message: 'Authentication required' },
+      };
+    }
+
+    // Check if user already has a membership
+    const { data: existingMembership } = await supabase
+      .from('user_memberships')
+      .select('id')
+      .eq('user_id', session.userId)
+      .limit(1)
+      .single();
+
+    if (existingMembership) {
+      return {
+        success: false,
+        error: { type: 'validation', message: 'You already belong to an organization' },
       };
     }
 
@@ -295,12 +325,23 @@ export async function registerOrganizationOnly(
       return { success: false, error: { type: 'validation', message: 'Invalid input', fieldErrors } };
     }
 
-    // Create
-    return await createOrganization({
+    // Create organization (pass empty string for clerkOrgId since we no longer use it)
+    const result = await createOrganization({
       name: parsed.data.organizationName,
       slug: parsed.data.organizationSlug,
-      clerkOrgId: authCtx.organizationId,
+      clerkOrgId: '',
     });
+
+    // If successful, create user_memberships row
+    if (result.success) {
+      await supabase.from('user_memberships').insert({
+        user_id: session.userId,
+        organization_id: result.data.id,
+        role: 'admin',
+      });
+    }
+
+    return result;
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'type' in err && 'message' in err) {
       return { success: false, error: { type: 'authorization', message: String((err as Record<string, unknown>).message) } };
@@ -330,11 +371,11 @@ export async function createFirstCity(
     const authCtx = await requireAuth();
     requireRole(authCtx, ['admin']);
 
-    // Resolve internal org
+    // Resolve internal org from membership
     const { data: org } = await supabase
       .from('organizations')
       .select('id')
-      .eq('clerk_org_id', authCtx.organizationId)
+      .eq('id', authCtx.organizationId)
       .single();
 
     if (!org) {

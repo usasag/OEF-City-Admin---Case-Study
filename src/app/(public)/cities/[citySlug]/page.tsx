@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { auth } from '@clerk/nextjs/server';
+import { getSession } from '@/lib/auth/session';
 import { getCityBySlug } from '@/lib/db/queries/cities';
 import { getActionsByCity } from '@/lib/db/queries/climate-actions';
 import { totalEstimatedReduction, percentOfBaselineReduced, isOnTrack } from '@/lib/calculations/progress';
@@ -22,8 +22,8 @@ interface PageProps {
 export default async function CityDashboardPage({ params }: PageProps) {
   const { citySlug } = await params;
 
-  const { userId } = await auth();
-  const signedIn = !!userId;
+  const session = await getSession();
+  const signedIn = !!session;
 
   const city = await getCityBySlug(citySlug);
   if (!city) {

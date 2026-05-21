@@ -1,4 +1,5 @@
 import { requireAuth } from '@/lib/auth/permissions';
+import { getSession } from '@/lib/auth/session';
 import { supabase } from '@/lib/db/supabase';
 import { Icon } from '@/components/ui/Icon';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -7,20 +8,61 @@ import { RegisterOrgForm } from '@/components/admin/RegisterOrgForm';
 import { OnboardingTabsClient } from '@/components/admin/OnboardingTabsClient';
 
 export default async function OnboardingPage() {
-  let authCtx;
-  try {
-    authCtx = await requireAuth();
-  } catch {
+  const session = await getSession();
+
+  if (!session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface">
         <div className="card max-w-md text-center p-8">
           <h1 className="text-2xl font-bold text-danger">Access Denied</h1>
           <p className="mt-3 text-ink-muted">
-            You must be signed in with an active organization to access onboarding.
+            You must be signed in to access onboarding.
           </p>
-          <Link href="/" className="mt-4 inline-block text-sm font-medium text-sky-400 hover:underline">
-            ← Back to home
+          <Link href="/sign-in" className="mt-4 inline-block text-sm font-medium text-sky-400 hover:underline">
+            ← Sign in
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Try to get auth context (may fail if no org membership yet)
+  let authCtx;
+  try {
+    authCtx = await requireAuth();
+  } catch {
+    // No org membership yet — this is the expected state for new users
+    // Show the org registration form
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface px-4 py-12">
+        <div className="fixed top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <div className="w-full max-w-lg">
+          <div className="mb-8 flex flex-col items-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-forest-50 dark:bg-forest-700/20">
+              <Icon name="leaf" size={28} className="text-forest-600 dark:text-forest-500" />
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-xs text-ink-muted">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold bg-forest-600 text-white">1</span>
+              <span className="font-medium text-ink">Register Org</span>
+              <span className="text-border">→</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold bg-forest-50 text-forest-600/50 dark:bg-forest-700/20">2</span>
+              <span className="text-ink-muted">Add City</span>
+            </div>
+            <h1 className="mt-4 text-2xl font-bold text-ink">Register Your Organization</h1>
+            <p className="mt-2 text-center text-sm text-ink-muted">
+              Set up your organization in the Climate Action Tracker.
+            </p>
+          </div>
+          <div className="card p-6">
+            <RegisterOrgForm />
+          </div>
+          <div className="mt-6 text-center">
+            <Link href="/" className="text-sm text-ink-muted hover:text-ink transition-colors">
+              ← Back to home
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -51,7 +93,7 @@ export default async function OnboardingPage() {
   const { data: organization } = await supabase
     .from('organizations')
     .select('id, name, slug')
-    .eq('clerk_org_id', authCtx.organizationId)
+    .eq('id', authCtx.organizationId)
     .single();
 
   const step = organization ? 'city' : 'org';

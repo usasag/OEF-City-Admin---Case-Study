@@ -63,10 +63,26 @@ const {
   deleteActionMock: vi.fn(),
 }));
 
-// Mock the Clerk boundary used by src/lib/auth/clerk.ts.
-vi.mock("@clerk/nextjs/server", () => ({
-  auth: authMock,
-  currentUser: vi.fn(),
+// Mock the session boundary used by src/lib/auth/session.ts.
+vi.mock("@/lib/auth/session", () => ({
+  getSession: authMock,
+}));
+
+// Mock the supabase service-role client used by src/lib/auth/permissions.ts
+// to look up user_memberships.
+const supabaseMembershipMock = vi.hoisted(() => {
+  const singleMock = vi.fn();
+  const limitMock = vi.fn(() => ({ single: singleMock }));
+  const eqMock = vi.fn(() => ({ limit: limitMock }));
+  const selectMock = vi.fn(() => ({ eq: eqMock }));
+  const fromMock = vi.fn(() => ({ select: selectMock }));
+  return { fromMock, selectMock, eqMock, limitMock, singleMock };
+});
+
+vi.mock("@/lib/db/supabase", () => ({
+  supabase: {
+    from: supabaseMembershipMock.fromMock,
+  },
 }));
 
 // Mock the city queries used by src/actions/city.ts and the city lookup
@@ -167,20 +183,18 @@ const anyRoleGen: fc.Arbitrary<AppRole> = fc.constantFrom(
 );
 
 /**
- * Maps an in-test app role to the Clerk org role string our `mapClerkRole`
- * helper recognizes. Anything other than `org:admin` / `org:editor` falls
- * through to `viewer` per the helper's default branch.
+ * Maps an in-test app role to the role string stored in user_memberships.
  */
-function clerkRoleString(role: AppRole): string {
+function membershipRoleString(role: AppRole): string {
   switch (role) {
     case "admin":
-      return "org:admin";
+      return "admin";
     case "editor":
-      return "org:editor";
+      return "editor";
     case "viewer":
-      return "org:viewer";
+      return "viewer";
     case "unmapped":
-      return "org:guest"; // an unrecognized clerk role → maps to 'viewer'
+      return "viewer"; // unmapped roles default to viewer
   }
 }
 
@@ -197,14 +211,26 @@ function clerkRoleString(role: AppRole): string {
  */
 function resetAllMocks() {
   authMock.mockReset();
+  supabaseMembershipMock.fromMock.mockReset();
+  supabaseMembershipMock.selectMock.mockReset();
+  supabaseMembershipMock.eqMock.mockReset();
+  supabaseMembershipMock.limitMock.mockReset();
+  supabaseMembershipMock.singleMock.mockReset();
   for (const m of ALL_DB_MOCKS) m.mockReset();
 }
 
 function configureAuth(userOrgId: string, role: AppRole) {
-  authMock.mockResolvedValue({
-    userId: "user-1",
-    orgId: userOrgId,
-    orgRole: clerkRoleString(role),
+  // getSession returns { userId, email }
+  authMock.mockResolvedValue({ userId: "user-1", email: "test@example.com" });
+
+  // supabase.from('user_memberships').select(...).eq(...).limit(...).single()
+  // returns the membership with the user's org and role
+  supabaseMembershipMock.fromMock.mockReturnValue({ select: supabaseMembershipMock.selectMock });
+  supabaseMembershipMock.selectMock.mockReturnValue({ eq: supabaseMembershipMock.eqMock });
+  supabaseMembershipMock.eqMock.mockReturnValue({ limit: supabaseMembershipMock.limitMock });
+  supabaseMembershipMock.limitMock.mockReturnValue({ single: supabaseMembershipMock.singleMock });
+  supabaseMembershipMock.singleMock.mockResolvedValue({
+    data: { organization_id: userOrgId, role: membershipRoleString(role) },
   });
 }
 
@@ -303,6 +329,11 @@ const ALL_DB_MOCKS = [
 
 beforeEach(() => {
   authMock.mockReset();
+  supabaseMembershipMock.fromMock.mockReset();
+  supabaseMembershipMock.selectMock.mockReset();
+  supabaseMembershipMock.eqMock.mockReset();
+  supabaseMembershipMock.limitMock.mockReset();
+  supabaseMembershipMock.singleMock.mockReset();
   for (const m of ALL_DB_MOCKS) m.mockReset();
 });
 

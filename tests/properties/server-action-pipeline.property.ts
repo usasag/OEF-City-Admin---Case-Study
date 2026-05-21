@@ -55,10 +55,26 @@ const {
   deleteActionMock: vi.fn(),
 }));
 
-// Mock the Clerk boundary used by src/lib/auth/clerk.ts.
-vi.mock("@clerk/nextjs/server", () => ({
-  auth: authMock,
-  currentUser: vi.fn(),
+// Mock the session boundary used by src/lib/auth/session.ts.
+vi.mock("@/lib/auth/session", () => ({
+  getSession: authMock,
+}));
+
+// Mock the supabase service-role client used by src/lib/auth/permissions.ts
+// to look up user_memberships.
+const supabaseMembershipMock = vi.hoisted(() => {
+  const singleMock = vi.fn();
+  const limitMock = vi.fn(() => ({ single: singleMock }));
+  const eqMock = vi.fn(() => ({ limit: limitMock }));
+  const selectMock = vi.fn(() => ({ eq: eqMock }));
+  const fromMock = vi.fn(() => ({ select: selectMock }));
+  return { fromMock, selectMock, eqMock, limitMock, singleMock };
+});
+
+vi.mock("@/lib/db/supabase", () => ({
+  supabase: {
+    from: supabaseMembershipMock.fromMock,
+  },
 }));
 
 // Mock the city queries used by both src/actions/city.ts and
@@ -183,51 +199,53 @@ function configureStages(opts: {
 
   // Reset everything before configuring this scenario.
   authMock.mockReset();
+  supabaseMembershipMock.fromMock.mockReset();
+  supabaseMembershipMock.selectMock.mockReset();
+  supabaseMembershipMock.eqMock.mockReset();
+  supabaseMembershipMock.limitMock.mockReset();
+  supabaseMembershipMock.singleMock.mockReset();
   getCityByOrgIdMock.mockReset();
   updateCityMock.mockReset();
   createActionMock.mockReset();
   updateActionMock.mockReset();
   deleteActionMock.mockReset();
 
-  // ---- Stage 1 + 2: authentication + org resolution (fused inside requireAuth)
-  if (firstFailingStage === "auth") {
-    // Both userId and orgId null → requireAuth throws { type: 'authorization' }.
-    authMock.mockResolvedValue({ userId: null, orgId: null, orgRole: null });
-  } else if (firstFailingStage === "role") {
-    // Authenticated, org resolved, but role is viewer → requireRole throws.
-    authMock.mockResolvedValue({
-      userId: "user-1",
-      orgId: "org-1",
-      orgRole: "org:viewer",
-    });
-  } else {
-    // Auth + role both pass for validation- and db-stage scenarios.
-    authMock.mockResolvedValue({
-      userId: "user-1",
-      orgId: "org-1",
-      orgRole: "org:admin",
-    });
+  // Helper to configure the supabase membership chain
+  function configureMembership(orgId: string | null, role: string | null) {
+    supabaseMembershipMock.fromMock.mockReturnValue({ select: supabaseMembershipMock.selectMock });
+    supabaseMembershipMock.selectMock.mockReturnValue({ eq: supabaseMembershipMock.eqMock });
+    supabaseMembershipMock.eqMock.mockReturnValue({ limit: supabaseMembershipMock.limitMock });
+    supabaseMembershipMock.limitMock.mockReturnValue({ single: supabaseMembershipMock.singleMock });
+    if (orgId && role) {
+      supabaseMembershipMock.singleMock.mockResolvedValue({
+        data: { organization_id: orgId, role },
+      });
+    } else {
+      supabaseMembershipMock.singleMock.mockResolvedValue({ data: null });
+    }
   }
 
-  // ---- Stage 5: DB. getCityByOrgId is part of the "execute mutation" stage:
-  //      - For city action: only updateCity is the terminal mutation; getCityByOrgId
-  //        is a tenant-isolation lookup that precedes it.
-  //      - For climate actions create/update/delete, their respective query
-  //        helpers are the terminal mutations.
-  //
-  // We always have getCityByOrgId return a valid city when reached, so that
-  // it never short-circuits as not_found. The terminal DB mutation either
-  // resolves (if db is not the failing stage) or rejects (if db is the
-  // failing stage).
+  // ---- Stage 1 + 2: authentication + org resolution (fused inside requireAuth)
+  if (firstFailingStage === "auth") {
+    // getSession returns null → requireAuth throws { type: 'authorization' }.
+    authMock.mockResolvedValue(null);
+    configureMembership(null, null);
+  } else if (firstFailingStage === "role") {
+    // Authenticated, org resolved, but role is viewer → requireRole throws.
+    authMock.mockResolvedValue({ userId: "user-1", email: "test@example.com" });
+    configureMembership("org-1", "viewer");
+  } else {
+    // Auth + role both pass for validation- and db-stage scenarios.
+    authMock.mockResolvedValue({ userId: "user-1", email: "test@example.com" });
+    configureMembership("org-1", "admin");
+  }
+
+  // ---- Stage 5: DB. getCityByOrgId is part of the "execute mutation" stage.
   getCityByOrgIdMock.mockResolvedValue(stubCity);
 
   if (firstFailingStage === "db") {
     dbMutationMock.mockRejectedValue(new Error("DB write failed"));
   } else {
-    // Resolve with a sensible default; the type isn't strictly checked here
-    // because we only care that the mutation succeeded for the success case
-    // (which we don't assert in this property — every scenario fails by
-    // construction at exactly one stage).
     dbMutationMock.mockResolvedValue(stubClimateAction);
   }
 }
@@ -240,6 +258,11 @@ function configureStages(opts: {
 describe("Property 14: Server Action Pipeline Ordering", () => {
   beforeEach(() => {
     authMock.mockReset();
+    supabaseMembershipMock.fromMock.mockReset();
+    supabaseMembershipMock.selectMock.mockReset();
+    supabaseMembershipMock.eqMock.mockReset();
+    supabaseMembershipMock.limitMock.mockReset();
+    supabaseMembershipMock.singleMock.mockReset();
     getCityByOrgIdMock.mockReset();
     updateCityMock.mockReset();
     createActionMock.mockReset();

@@ -1,28 +1,34 @@
 import type { AuthContext } from '@/types';
-import { getClerkAuth } from './clerk';
+import { getSession } from './session';
+import { supabase } from '@/lib/db/supabase';
 
 /**
- * Resolves the current user's auth context from Clerk session.
- * Throws a structured error if not authenticated or no organization is active.
+ * Resolves the current user's auth context from Supabase session + user_memberships.
+ * Throws a structured error if not authenticated or no organization membership exists.
  */
 export async function requireAuth(): Promise<AuthContext> {
-  const { userId, orgId, orgRole } = await getClerkAuth();
+  const session = await getSession();
 
-  if (!userId) {
+  if (!session) {
     throw { type: 'authorization', message: 'Authentication required' };
   }
 
-  if (!orgId) {
+  // Look up the user's organization membership
+  const { data: membership } = await supabase
+    .from('user_memberships')
+    .select('organization_id, role')
+    .eq('user_id', session.userId)
+    .limit(1)
+    .single();
+
+  if (!membership) {
     throw { type: 'authorization', message: 'No active organization' };
   }
 
-  // Map Clerk role to our role type
-  const role = mapClerkRole(orgRole);
-
   return {
-    userId,
-    organizationId: orgId,
-    role,
+    userId: session.userId,
+    organizationId: membership.organization_id,
+    role: membership.role as 'admin' | 'editor' | 'viewer',
   };
 }
 
@@ -33,16 +39,5 @@ export async function requireAuth(): Promise<AuthContext> {
 export function requireRole(ctx: AuthContext, roles: ('admin' | 'editor')[]): void {
   if (!roles.includes(ctx.role as 'admin' | 'editor')) {
     throw { type: 'authorization', message: 'Insufficient permissions' };
-  }
-}
-
-function mapClerkRole(clerkRole: string | null | undefined): 'admin' | 'editor' | 'viewer' {
-  switch (clerkRole) {
-    case 'org:admin':
-      return 'admin';
-    case 'org:editor':
-      return 'editor';
-    default:
-      return 'viewer';
   }
 }

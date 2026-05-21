@@ -22,7 +22,7 @@ All 13 tests passed on first run. This would have taken 2+ hours to write manual
 
 I had to:
 1. Provide the correct endpoint (`https://models.github.ai/inference`)
-2. Correct the model format to `openai/gpt-4o`
+2. Correct the model format to `openai/gpt-4.1`
 3. Ultimately replace the entire Vercel AI SDK layer with the direct `openai` npm package
 
 The direct SDK approach worked immediately — simpler code, no abstraction layer, correct endpoint handling out of the box.

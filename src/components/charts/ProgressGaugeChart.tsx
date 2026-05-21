@@ -2,7 +2,6 @@
 
 import Plot from '@/components/charts/ChartWrapper';
 import { getChartTheme } from '@/lib/charts/chart-config';
-import { ChartControlTips } from './ChartControlTips';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import type { ProgressGaugeChartProps } from '@/types/charts';
 
@@ -52,7 +51,6 @@ export default function ProgressGaugeChart({ percentReduced, onTrackStatus }: Pr
         useResizeHandler
         style={{ width: '100%', height: '280px' }}
       />
-      <ChartControlTips />
     </div>
   );
 }

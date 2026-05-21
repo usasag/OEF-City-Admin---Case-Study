@@ -3,7 +3,6 @@
 import Plot from '@/components/charts/ChartWrapper';
 import { toSectorPieTrace } from '@/lib/charts/chart-data-transforms';
 import { createBaseLayout, getChartTheme } from '@/lib/charts/chart-config';
-import { ChartControlTips } from './ChartControlTips';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import type { SectorBreakdownChartProps } from '@/types/charts';
 
@@ -31,7 +30,6 @@ export default function SectorBreakdownChart({ sectorData, totalReduction }: Sec
         useResizeHandler
         style={{ width: '100%', height: '380px' }}
       />
-      <ChartControlTips />
     </div>
   );
 }
